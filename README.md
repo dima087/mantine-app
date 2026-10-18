@@ -1,1 +1,1 @@
-https://dima087.github.io/mantine-app/
+Github Pages: https://dima087.github.io/mantine-app/
