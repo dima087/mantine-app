@@ -1,71 +1,70 @@
-import {
-    Anchor,
-    Button,
-    Card,
-    Container,
-    Group,
-    PasswordInput,
-    Stack,
-    Text,
-    TextInput,
-    Title,
-} from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { IconLock, IconMail } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { AppShell, Container, Title } from '@mantine/core';
+import { fetchProducts, type Product } from './api/products';
+import { useCart } from './hooks/useCart';
+import { AppHeader } from './components/AppHeader';
+import { ProductList } from './components/ProductList';
+import { CartDrawer } from './components/CartDrawer';
 
 export default function App() {
-    const form = useForm({
-        mode: 'uncontrolled',
-        initialValues: {
-            email: '',
-            password: '',
-        },
-        validate: {
-            email: (value) =>
-                /^\S+@\S+\.\S+$/.test(value) ? null : 'Введите корректный email',
-            password: (value) =>
-                value.length >= 6 ? null : 'Минимум 6 символов',
-        },
-    });
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+
+    const { cartDetails, totalItems, totalPrice, addToCart, removeFromCart, updateCartQuantity } = useCart(products);
+
+    useEffect(() => {
+        loadProducts();
+    }, []);
+
+    async function loadProducts() {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await fetchProducts();
+            setProducts(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return (
-        <Container size={420} my={40}>
-            <Title ta="center">Добро пожаловать</Title>
-            <Text c="dimmed" size="sm" ta="center" mt={5}>
-                Войдите, чтобы продолжить
-            </Text>
+        <AppShell header={{ height: 60 }} padding={0}>
+            <AppShell.Header withBorder>
+                <AppHeader
+                    totalItems={totalItems}
+                    totalPrice={totalPrice}
+                    onCartClick={() => setIsCartOpen(true)}
+                />
+            </AppShell.Header>
 
-            <Card withBorder shadow="md" p={30} mt={30} radius="md">
-                <form onSubmit={form.onSubmit((values) => console.log(values))}>
-                    <Stack>
-                        <TextInput
-                            label="Email"
-                            placeholder="you@example.com"
-                            leftSection={<IconMail size={16} />}
-                            key={form.key('email')}
-                            {...form.getInputProps('email')}
-                        />
+            <AppShell.Main bg="#f0f2f5">
+                <Container size="xl" fluid mih="calc(100vh - 60px)" p="xl">
+                    <Title order={2} mb="lg" ta="left" style={{ fontSize: 32, fontWeight: 700 }} c="dark">
+                        Catalog
+                    </Title>
 
-                        <PasswordInput
-                            label="Пароль"
-                            placeholder="Ваш пароль"
-                            leftSection={<IconLock size={16} />}
-                            key={form.key('password')}
-                            {...form.getInputProps('password')}
-                        />
+                    <ProductList
+                        products={products}
+                        loading={loading}
+                        error={error}
+                        onRetry={loadProducts}
+                        onAddToCart={addToCart}
+                    />
+                </Container>
+            </AppShell.Main>
 
-                        <Group justify="space-between">
-                            <Anchor component="button" size="sm">
-                                Забыли пароль?
-                            </Anchor>
-                        </Group>
-
-                        <Button type="submit" fullWidth>
-                            Войти
-                        </Button>
-                    </Stack>
-                </form>
-            </Card>
-        </Container>
+            <CartDrawer
+                opened={isCartOpen}
+                onClose={() => setIsCartOpen(false)}
+                cartDetails={cartDetails}
+                totalPrice={totalPrice}
+                onUpdateQuantity={updateCartQuantity}
+                onRemove={removeFromCart}
+            />
+        </AppShell>
     );
 }
